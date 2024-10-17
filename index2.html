@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <img src="logo-slider-1.png" alt="logo" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Selección de Canales</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+</head>
+<body>
+    <h1>Seleccionar Canales</h1>
+    <p>Por favor, selecciona cuántos canales quieres agregar:</p>
+    <input type="number" id="numCanales" min="1">
+    <button onclick="solicitarCanales()">Generar Desplegables</button>
+
+    <div id="seleccionCanales"></div>
+    <button id="finalizarSeleccion" onclick="finalizarSeleccion()" style="display: none;">Finalizar Selección</button>
+
+    <script>
+        let canalesDisponibles = [];
+
+        // Función para leer el archivo Excel
+        function cargarCanalesDesdeExcel() {
+            fetch('canales.xlsx')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Error al cargar el archivo: ${response.statusText}`);
+                    }
+                    return response.arrayBuffer();
+                })
+                .then(data => {
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    canalesDisponibles = XLSX.utils.sheet_to_json(firstSheet);
+                    console.log(canalesDisponibles);  // Verifica que los datos se hayan cargado
+                })
+                .catch(error => {
+                    console.error('Error al cargar el archivo de Excel:', error);
+                    alert('Hubo un problema al cargar el archivo de Excel. Verifique que el archivo esté disponible y en la ubicación correcta.');
+                });
+        }
+
+        // Cargar canales disponibles al inicio
+        cargarCanalesDesdeExcel();
+
+        // Función para solicitar el número de canales y generar los desplegables
+        function solicitarCanales() {
+            const numCanales = parseInt(document.getElementById('numCanales').value);
+            if (isNaN(numCanales) || numCanales <= 0) {
+                alert('Por favor, ingresa un número válido de canales.');
+                return;
+            }
+
+            const divSeleccionCanales = document.getElementById('seleccionCanales');
+            divSeleccionCanales.innerHTML = '';  // Limpiar el contenido previo
+
+            for (let i = 0; i < numCanales; i++) {
+                const label = document.createElement('label');
+                label.textContent = `Canal ${i + 1}: `;
+
+                const select = document.createElement('select');
+                select.className = 'canalSelect';
+                select.setAttribute('data-index', i);
+
+                // Agregar opción vacía y las opciones de canales disponibles
+                const emptyOption = document.createElement('option');
+                emptyOption.value = '';
+                emptyOption.textContent = 'Selecciona un canal';
+                select.appendChild(emptyOption);
+
+                canalesDisponibles.forEach(canal => {
+                    const option = document.createElement('option');
+                    option.value = canal.Channel;  // Aquí seleccionamos el nombre del canal
+                    option.textContent = `${canal.Channel} (${canal['HD/SD']}, ${canal.Transponder})`;
+                    select.appendChild(option);
+                });
+
+                divSeleccionCanales.appendChild(label);
+                divSeleccionCanales.appendChild(select);
+                divSeleccionCanales.appendChild(document.createElement('br'));
+            }
+
+            // Mostrar botón de finalizar selección
+            document.getElementById('finalizarSeleccion').style.display = 'inline';
+        }
+
+        // Función para finalizar la selección de canales
+        function finalizarSeleccion() {
+            const selects = document.querySelectorAll('.canalSelect');
+            const canalesSeleccionados = [];
+            const seleccionados = new Set();
+
+            for (const select of selects) {
+                const canalSeleccionado = select.value;
+                if (canalSeleccionado === '') {
+                    alert('Por favor, selecciona todos los canales.');
+                    return;
+                }
+                if (seleccionados.has(canalSeleccionado)) {
+                    alert('No puedes seleccionar el mismo canal más de una vez.');
+                    return;
+                }
+                seleccionados.add(canalSeleccionado);
+
+                // Encontrar el canal completo en la lista de canales disponibles
+                const canalEncontrado = canalesDisponibles.find(canal => canal.Channel === canalSeleccionado);
+                if (canalEncontrado) {
+                    canalesSeleccionados.push(canalEncontrado);
+                }
+            }
+
+            contarCams(canalesSeleccionados);
+        }
+
+        // Función para contar cams y mostrar el resultado
+        function contarCams(canales) {
+            const conteoCams = {};
+            let totalCams = 0;
+            let camNumero = 1;
+            const resultadoCams = [];
+
+            // Agrupar canales por Transponder
+            canales.forEach(canal => {
+                const transponder = canal.Transponder;
+                if (!conteoCams[transponder]) {
+                    conteoCams[transponder] = [];
+                }
+                conteoCams[transponder].push(canal.Channel);
+            });
+
+            // Calcular cuántas cams son necesarias y listar los canales
+            for (const transponder in conteoCams) {
+                const canalesGrupo = conteoCams[transponder];
+                const cantidad = canalesGrupo.length;
+                const camsNecesarias = Math.ceil(cantidad / 8);
+                totalCams += camsNecesarias;
+
+                // Dividir los canales en grupos de hasta 8 por cam
+                for (let i = 0; i < cantidad; i += 8) {
+                    const grupo = canalesGrupo.slice(i, i + 8);
+                    resultadoCams.push(`Cam ${camNumero}: Transponder ${transponder}, Canales: ${grupo.join(', ')} (Total: ${grupo.length} canales)`);
+                    camNumero++;
+                }
+            }
+
+            alert(`Total de cams necesarias: ${totalCams}\n\n` + resultadoCams.join('\n'));
+        }
+    </script>
+</body>
+</html>
