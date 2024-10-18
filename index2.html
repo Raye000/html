@@ -1,20 +1,98 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <img src="logo-slider-1.png" alt="logo" />
+    <!--<img src="logo-slider-1.png" alt="logo" />-->
+    <img src="logo-slider-1.png" alt="Imagen en la esquina superior derecha" class="img-esquina">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Selección de Canales</title>
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <!-- Awesomplete: Librería para autocompletado -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/awesomplete/1.1.5/awesomplete.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/awesomplete/1.1.5/awesomplete.min.js"></script>
+    <style>
+        
+        body {
+            background-image: url('ant.jpg'); /* Reemplaza con tu imagen */
+            background-size: cover;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .img-esquina {
+            position: absolute;  /* Posición absoluta en relación con el contenedor o el viewport */
+            top: 0;              /* Alineada con la parte superior */
+            left: 0;            /* Alineada con la parte derecha */
+            /* Opcional: puedes ajustar el tamaño de la imagen si lo deseas */
+            width: 200px;        /* Ancho de la imagen */
+            height: auto;        /* Mantener la proporción de la imagen */
+        }
+
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+        }
+        input[type="number"] {
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            background-color: #ff9a00;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        button:hover {
+            background-color: #ff9a00;
+        }
+        input[type="text"] {
+            padding: 10px;
+            width: 80%;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        a {
+            display: block;
+            margin-top: 20px;
+            color: #ff9a00;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
 </head>
 <body>
-    <h1>Seleccionar Canales</h1>
-    <p>Por favor, selecciona cuántos canales quieres agregar:</p>
-    <input type="number" id="numCanales" min="1">
-    <button onclick="solicitarCanales()">Generar Desplegables</button>
+    <div class="container">
+        <h1>Seleccionar Canales</h1>
+        <p>Por favor, selecciona cuántos canales quieres agregar:</p>
+        <input type="number" id="numCanales" min="1" placeholder="Número de canales">
+        <button onclick="solicitarCanales()">Generar Campos de Búsqueda</button>
 
-    <div id="seleccionCanales"></div>
-    <button id="finalizarSeleccion" onclick="finalizarSeleccion()" style="display: none;">Finalizar Selección</button>
+        <div id="seleccionCanales"></div>
+        <button id="finalizarSeleccion" onclick="finalizarSeleccion()" style="display: none;">Finalizar Selección</button>
+
+        <!-- Enlaces para descargar archivos -->
+        <a id="downloadLink" style="display:none;">Descargar archivo de texto</a>
+        <a id="downloadExcelLink" style="display:none;">Descargar archivo Excel</a>
+    </div>
 
     <script>
         let canalesDisponibles = [];
@@ -43,7 +121,7 @@
         // Cargar canales disponibles al inicio
         cargarCanalesDesdeExcel();
 
-        // Función para solicitar el número de canales y generar los desplegables
+        // Función para solicitar el número de canales y generar los campos de autocompletado
         function solicitarCanales() {
             const numCanales = parseInt(document.getElementById('numCanales').value);
             if (isNaN(numCanales) || numCanales <= 0) {
@@ -58,40 +136,33 @@
                 const label = document.createElement('label');
                 label.textContent = `Canal ${i + 1}: `;
 
-                const select = document.createElement('select');
-                select.className = 'canalSelect';
-                select.setAttribute('data-index', i);
-
-                // Agregar opción vacía y las opciones de canales disponibles
-                const emptyOption = document.createElement('option');
-                emptyOption.value = '';
-                emptyOption.textContent = 'Selecciona un canal';
-                select.appendChild(emptyOption);
-
-                canalesDisponibles.forEach(canal => {
-                    const option = document.createElement('option');
-                    option.value = canal.Channel;  // Aquí seleccionamos el nombre del canal
-                    option.textContent = `${canal.Channel} (${canal['HD/SD']}, ${canal.Transponder})`;
-                    select.appendChild(option);
-                });
+                const input = document.createElement('input');
+                input.className = 'canalInput';
+                input.setAttribute('data-index', i);
+                input.setAttribute('placeholder', 'Escribe para buscar un canal');
 
                 divSeleccionCanales.appendChild(label);
-                divSeleccionCanales.appendChild(select);
+                divSeleccionCanales.appendChild(input);
                 divSeleccionCanales.appendChild(document.createElement('br'));
+
+                new Awesomplete(input, {
+                    list: canalesDisponibles.map(canal => `${canal.Channel} (${canal['HD/SD']}, ${canal.Transponder})`),
+                    minChars: 1,
+                    maxItems: 10,  
+                    autoFirst: true
+                });
             }
 
-            // Mostrar botón de finalizar selección
             document.getElementById('finalizarSeleccion').style.display = 'inline';
         }
 
-        // Función para finalizar la selección de canales
         function finalizarSeleccion() {
-            const selects = document.querySelectorAll('.canalSelect');
+            const inputs = document.querySelectorAll('.canalInput');
             const canalesSeleccionados = [];
             const seleccionados = new Set();
 
-            for (const select of selects) {
-                const canalSeleccionado = select.value;
+            for (const input of inputs) {
+                const canalSeleccionado = input.value.split(' (')[0];  
                 if (canalSeleccionado === '') {
                     alert('Por favor, selecciona todos los canales.');
                     return;
@@ -102,7 +173,6 @@
                 }
                 seleccionados.add(canalSeleccionado);
 
-                // Encontrar el canal completo en la lista de canales disponibles
                 const canalEncontrado = canalesDisponibles.find(canal => canal.Channel === canalSeleccionado);
                 if (canalEncontrado) {
                     canalesSeleccionados.push(canalEncontrado);
@@ -110,16 +180,15 @@
             }
 
             contarCams(canalesSeleccionados);
+            crearArchivoExcel(canalesSeleccionados);
         }
 
-        // Función para contar cams y mostrar el resultado
         function contarCams(canales) {
             const conteoCams = {};
             let totalCams = 0;
             let camNumero = 1;
             const resultadoCams = [];
 
-            // Agrupar canales por Transponder
             canales.forEach(canal => {
                 const transponder = canal.Transponder;
                 if (!conteoCams[transponder]) {
@@ -128,14 +197,12 @@
                 conteoCams[transponder].push(canal.Channel);
             });
 
-            // Calcular cuántas cams son necesarias y listar los canales
             for (const transponder in conteoCams) {
                 const canalesGrupo = conteoCams[transponder];
                 const cantidad = canalesGrupo.length;
                 const camsNecesarias = Math.ceil(cantidad / 8);
                 totalCams += camsNecesarias;
 
-                // Dividir los canales en grupos de hasta 8 por cam
                 for (let i = 0; i < cantidad; i += 8) {
                     const grupo = canalesGrupo.slice(i, i + 8);
                     resultadoCams.push(`Cam ${camNumero}: Transponder ${transponder}, Canales: ${grupo.join(', ')} (Total: ${grupo.length} canales)`);
@@ -144,6 +211,59 @@
             }
 
             alert(`Total de cams necesarias: ${totalCams}\n\n` + resultadoCams.join('\n'));
+            crearArchivoTexto(totalCams, resultadoCams);
+        }
+
+        function crearArchivoTexto(totalCams, resultadoCams) {
+            const nombreCliente = prompt("Introduce el nombre del cliente:");
+            if (!nombreCliente) {
+                alert('Debes ingresar un nombre de cliente.');
+                return;
+            }
+
+            const contenido = `Cliente: ${nombreCliente}\n\nTotal de cams necesarias: ${totalCams}\n\n` +
+                resultadoCams.join('\n');
+
+            const blob = new Blob([contenido], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const enlaceDescarga = document.getElementById('downloadLink');
+
+            enlaceDescarga.href = url;
+            enlaceDescarga.download = `${nombreCliente}_info_cams.txt`;
+            enlaceDescarga.style.display = 'block';
+            enlaceDescarga.click();  
+        }
+
+        function crearArchivoExcel(canales) {
+            const nombreCliente = prompt("Introduce el nombre del cliente para el archivo Excel:");
+            if (!nombreCliente) {
+                alert('Debes ingresar un nombre de cliente.');
+                return;
+            }
+
+            const hojaDatos = [
+                ["Cliente", nombreCliente],
+                [],
+                ["Canal", "Transponder", "HD/SD"]
+            ];
+
+            canales.forEach(canal => {
+                hojaDatos.push([canal.Channel, canal.Transponder, canal['HD/SD']]);
+            });
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(hojaDatos);
+            XLSX.utils.book_append_sheet(wb, ws, "Canales Seleccionados");
+
+            const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+            const blob = new Blob([wbout], { type: 'application/octet-stream' });
+            const url = URL.createObjectURL(blob);
+            const enlaceExcel = document.getElementById('downloadExcelLink');
+
+            enlaceExcel.href = url;
+            enlaceExcel.download = `${nombreCliente}_canales_seleccionados.xlsx`;
+            enlaceExcel.style.display = 'block';
+            enlaceExcel.click();  
         }
     </script>
 </body>
